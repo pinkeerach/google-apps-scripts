@@ -4,14 +4,6 @@ function scrubYnabImport() {
   var sheet = SpreadsheetApp.getActiveSheet();
   deleteAvgAndTotalColumns(sheet);
 
-  //add parent category column to all remaining line items
-  addParentCategory(sheet);
-
-  //remove category line items
-  deleteParentRecords(sheet);
-
-  moveIncomeToNewSheet(sheet);
-  
   convertToAbsoluteValue(sheet);
 }
 
@@ -27,14 +19,6 @@ function deleteAvgAndTotalColumns(sheet){
   } else {
     Logger.log("no sheet found");
   }
-}
-
-function addParentCategory(mainSheet){
-
-  mainSheet.insertColumnBefore(1);
-  
-  var parentHeader = mainSheet.getRange("A1");
-  parentHeader.setValue("Parent");
 }
 
 function deleteParentRecords(mainSheet) {
