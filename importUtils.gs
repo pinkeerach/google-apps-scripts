@@ -2,17 +2,30 @@
 function scrubYnabImport() {
   //delete average and total columns
   var sheet = SpreadsheetApp.getActiveSheet();
-  deleteAvgAndTotalColumns(sheet);
 
-  convertToAbsoluteValue(sheet);
+  insertParentColumn(sheet);
+  deleteParentRecords(sheet);
+  deleteAverageColumn(sheet);
+
+  moveIncomeToNewSheet(sheet);
+  //convertToAbsoluteValue(sheet); //for cashflow, need positive/negatives
 }
 
-function deleteAvgAndTotalColumns(sheet){
+function deleteAverageColumn(sheet){
   if(sheet) {
-    var maxColumns = sheet.getLastColumn(); 
+    var maxColumns = sheet.getLastColumn();
+    var columnsRange = sheet.getDataRange();
 
     if (maxColumns){
-      sheet.deleteColumns(maxColumns-1, 2);
+      for(var i = 1; i < maxColumns; i++){
+
+        var columnTitle = columnsRange.getCell(1,i).getValue();
+
+        if(columnTitle == "Average"){
+          sheet.deleteColumns(i, 1);
+          break;
+        }
+      }
     }else{
       Logger.log("no columns");
     }
@@ -21,7 +34,11 @@ function deleteAvgAndTotalColumns(sheet){
   }
 }
 
-function deleteParentRecords(mainSheet) {
+function insertParentColumn(mainSheet){
+  mainSheet.insertColumnAfter(1);
+  mainSheet.getRange("A1").setValue("Parent Category");
+  mainSheet.getRange("B1").setValue("Category");
+
   let dataRange = mainSheet.getDataRange();
   let values = dataRange.getValues();
 
@@ -34,19 +51,25 @@ function deleteParentRecords(mainSheet) {
   for(var i = 1; i < values.length; i++){
     var row = values[i];
 
-    var parentValue = row[0];
-    let categoryValue = row[1];
+    var categoryValue = row[0];
     
     if(currentParent != categoryValue && parentCategories.includes(categoryValue)){
       currentParent = categoryValue;
     }
     mainSheet.getRange("A"+(i+1)).setValue(currentParent);
+    mainSheet.getRange("B"+(i+1)).setValue(categoryValue);
   }
 
-  let freshValues = dataRange.getValues();
+}
+
+function deleteParentRecords(mainSheet) {
+  let dataRange = mainSheet.getDataRange();
+  let values = dataRange.getValues();
+
   var rowsToDelete = [];
-  for(var j = 1; j < freshValues.length; j++){
-    var row = freshValues[j];
+
+  for(var j = 1; j < values.length; j++){
+    var row = values[j];
     if(row[0] == row[1]) {
       //delete row
       rowsToDelete.push(j);
@@ -67,18 +90,22 @@ function moveIncomeToNewSheet(mainSheet){
     let row = dataRange.getValues()[i];
     if(row[0] == "All Income Sources"){
       rowsToMove.push(i);
+    }else{
+      break;
     }
   }
 
-  var incomeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Income 2022");
-  if(!incomeSheet){
-    incomeSheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet("Income 2022");
-  }
+  //number of columns needs to exclude the total column
+  var numberOfColumns = dataRange.getNumColumns()-1;
+  var rangeToMove = mainSheet.getRange(2, 1, rowsToMove.length, numberOfColumns);
+  rangeToMove.activate();
 
-  var rangeToMove = mainSheet.getRange(rowsToMove[0], 1, rowsToMove.length, dataRange.getNumColumns());
-  rangeToMove.copyTo(incomeSheet.getRange(1, 1, rowsToMove.length, dataRange.getNumColumns()));
+  var incomeSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Income2024");
+  //hardcoding range on the income sheet for now
+  var incomeSheetRange = incomeSheet.getRange(13, 2, rowsToMove.length, numberOfColumns);
+  rangeToMove.copyTo(incomeSheetRange);
 
-  mainSheet.deleteRows(rowsToMove[0]+1, rowsToMove.length);
+  mainSheet.deleteRows(2, rowsToMove.length);
 }
 
 function convertToAbsoluteValue(mainSheet){
